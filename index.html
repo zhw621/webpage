@@ -1,11 +1,361 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+<meta charset="utf-8">
+<!-- 保持：不要加 viewport，以避免你提到的下拉 BUG -->
+<title>樱花夜行 · 个人主页</title>
+<style>
+/* ===== 主题色（更偏男性的冷色系） ===== */
+:root{
+  --ink-900:#0a0f16;
+  --ink-800:#0f1722;
+  --steel-600:#223247;
+  --steel-400:#304860;
+  --text:#e8f0f6;
+  --muted:#a9b9c8;
+  --teal:#20e3ff;     /* 霓虹青 */
+  --violet:#7c9cff;   /* 靛蓝光 */
+}
+
+html,body{height:100%}
+body{
+  padding:0;margin:0;overflow:hidden;height:600px;
+  font-family: "Inter","PingFang SC","Microsoft YaHei",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:var(--text);
+  background: var(--ink-900);
+}
+
+/* WebGL 樱花背景始终在最底层 */
+canvas#sakura{position:absolute;left:0;top:0;z-index:-1;margin:0;padding:0}
+
+/* ===== 叠加内容层 ===== */
+.overlay{position:fixed;inset:0;pointer-events:none}
+
+/* 通用玻璃卡片（冷色金属质感） */
+.card{
+  position:absolute;pointer-events:auto;
+  max-width:min(540px, 42vw);
+  padding:16px 18px 18px;
+  border-radius:14px;
+  background:linear-gradient(180deg, rgba(22,32,48,.28), rgba(18,24,36,.22));
+  border:1px solid rgba(32, 227, 255, .35);            /* 青色边 */
+  box-shadow:
+    0 10px 36px rgba(16,32,48,.45),
+    0 0 0 1px rgba(60,120,160,.10) inset,
+    0 0 24px rgba(32,227,255,.08);
+  backdrop-filter:saturate(130%) blur(8px);
+  -webkit-backdrop-filter:saturate(130%) blur(8px);
+  transform-origin:center;
+}
+.card h2{
+  margin:0 0 10px; font-size:18px; letter-spacing:.06em; font-weight:700;
+  color:#dff9ff;
+  display:inline-block; padding:6px 10px; border-radius:9px;
+  border:1px solid rgba(32,227,255,.45);
+  background:linear-gradient(180deg, rgba(40,60,90,.35), rgba(28,40,58,.18));
+}
+.card p{margin:.4rem 0 0 0; line-height:1.8; color:var(--text); text-shadow:0 1px 1px #0006}
+
+/* 右下角不再用花符号，改为细角标 */
+.card::after{
+  content:"▢";
+  position:absolute; right:10px; bottom:8px; font-size:12px;
+  color:#8fb7ff; opacity:.65;
+}
+
+/* ===== 创意排布（桌面） ===== */
+.card--intro{left:4vw; top:4vh; transform:rotate(-1.5deg)}
+.card--photo{right:6vw; top:12vh; transform:rotate(1deg); padding:14px}
+.card--about{left:6vw; bottom:10vh; transform:rotate(.6deg); max-width:min(600px,46vw)}
+.card--projects{right:6vw; bottom:6vh; transform:rotate(-.8deg); max-width:min(560px,44vw)}
+
+/* 引子卡小标签 */
+.card--intro .tag{
+  display:inline-flex; gap:8px; align-items:center; margin-left:8px;
+  font-size:12px; color:var(--muted)
+}
+.tag .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);display:inline-block}
+
+/* 照片主卡 */
+.photo{position:relative;border-radius:12px;overflow:hidden;
+  border:1px solid rgba(124,156,255,.5);
+  box-shadow:0 8px 26px rgba(14,24,40,.5), 0 0 24px rgba(124,156,255,.12);
+}
+.photo img{display:block;width:min(360px,32vw);height:auto}
+.photo .rim{position:absolute;inset:-2px;border-radius:12px;
+  background:conic-gradient(from 180deg,#fff0,#7c9cff33,#20e3ff33,#7c9cff33,#fff0);
+  mix-blend-mode:screen;animation:spin 10s linear infinite}
+@keyframes spin{to{transform:rotate(1turn)}}
+
+/* 项目列表（PDF） */
+.projects{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:10px}
+.projects a{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  text-decoration:none;color:var(--text);
+  padding:12px;border-radius:10px;
+  border:1px solid rgba(124,156,255,.35);
+  background:linear-gradient(180deg, rgba(24,34,52,.32), rgba(18,26,40,.18));
+  transition:transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.projects a:hover{
+  transform:translateY(-2px);
+  border-color:rgba(32,227,255,.6);
+  box-shadow:0 8px 24px rgba(32,227,255,.12);
+}
+.projects .meta{font-size:12px;color:#cfe2ff}
+
+/* 中部姓名徽章（更硬朗的牌标） */
+.badge{
+  position:absolute; left:50%; top:45%; transform:translate(-50%,-50%) rotate(-2deg);
+  pointer-events:none; font-weight:800; letter-spacing:.12em;
+  color:#e6f6ff; text-shadow:0 0 18px rgba(32,227,255,.22), 0 1px 0 #0005;
+  background:linear-gradient(180deg, rgba(22,34,52,.35), rgba(14,22,34,.22));
+  border:1px solid rgba(32,227,255,.45);
+  border-radius:12px; padding:10px 16px;
+}
+
+/* 响应式（保持无 viewport 的情况下窄窗也易读） */
+@media (max-width: 1100px){
+  .card{max-width:min(520px, 80vw)}
+  .card--intro{left:4vw; top:3vh}
+  .card--photo{right:4vw; top:16vh}
+  .card--about{left:4vw; bottom:14vh}
+  .card--projects{right:4vw; bottom:6vh}
+  .photo img{width:min(320px, 58vw)}
+}
+@media (max-width: 760px){
+  .badge{display:none}
+  .card{max-width:86vw}
+  .card--intro{left:50%;top:3vh;transform:translateX(-50%) rotate(-1deg)}
+  .card--photo{left:50%;right:auto;top:16vh;transform:translateX(-50%) rotate(.4deg)}
+  .card--about{left:50%;right:auto;bottom:22vh;transform:translateX(-50%) rotate(.4deg)}
+  .card--projects{left:50%;right:auto;bottom:6vh;transform:translateX(-50%) rotate(-.4deg)}
+  .photo img{width:min(360px, 86vw)}
+}
+</style>
 </head>
+
 <body>
- 今天
+<!-- 背景：你的 WebGL 樱花雨 -->
+<canvas id="sakura"></canvas>
+
+<!-- 叠加内容：创意摆放的方框 -->
+<div class="overlay" aria-hidden="false">
+  <!-- 左上名片 -->
+  <section class="card card--intro">
+    <h2>Welcome</h2>
+    <p>欢迎来到我第一个网站</p>
+    <div class="tag"><span class="dot"></span><span>更新 · <span id="y"></span></span></div>
+  </section>
+
+  <!-- 右侧：照片主卡 -->
+  <section class="card card--photo" aria-labelledby="photoTitle">
+    <h2 id="photoTitle">我的照片</h2>
+    <figure class="photo">
+      <!-- 替换为你的照片路径 -->
+      <img src="my photo.jpeg" alt="个人照片">
+      <i class="rim" aria-hidden="true"></i>
+    </figure>
+  </section>
+
+  <!-- 左下：About -->
+  <section class="card card--about" aria-labelledby="aboutTitle">
+    <h2 id="aboutTitle">About Me</h2>
+    <p>大家好，我是一名 华侨大学 的学生邹豪文。平时休息时喜欢打乒乓球，在球台前挥洒汗水的感觉，能帮我快速放松，也让我保持积极的状态。 选择学习网页编程，是因为我一直对 “数字世界的搭建” 很感兴趣。每次看到设计精美的网页，都会好奇背后的实现逻辑 —— 文字怎么排版、按钮怎么交互、图片怎么加载。真正开始学习后发现，编程不仅能满足我的好奇心，还能让我把脑海里的创意落地，比如自己写一个记录生活的小网页，这种从想法到成品的过程，让我觉得特别有意义，也让我越来越喜欢这门技术。</p>
+  </section>
+
+  <!-- 右下：项目（PDF 链接） -->
+  <section class="card card--projects" aria-labelledby="projTitle">
+    <h2 id="projTitle">Projects（PDF）</h2>
+    <ul class="projects">
+      <li>
+        <a href="2515734.pdf" target="_blank" rel="noopener">
+          <span>美国大学生数学建模竞赛 M 奖论文</span><span class="meta">PDF</span>
+        </a>
+      </li>
+      <li>
+        <a href="G196.pdf" target="_blank" rel="noopener">
+          <span>全国大学生数学建模省赛 — 论文</span><span class="meta">PDF</span>
+        </a>
+      </li>
+      <li>
+        <a href="05-02-TU0505-火语言品牌策划书.pdf" target="_blank" rel="noopener">
+          <span>全国商业品牌策划书</span><span class="meta">PDF</span>
+        </a>
+      </li>
+    </ul>
+  </section>
+
+  <!-- 中部姓名徽章 -->
+  <div class="badge">ZOU · HOUWEN</div>
+</div>
+
+<script>document.getElementById('y').textContent=new Date().getFullYear();</script>
+
+<!-- ===== 下面整段：保留你的樱花 WebGL 脚本（未改动） ===== -->
+<script id="sakura_point_vsh" type="x-shader/x_vertex">
+uniform mat4 uProjection;uniform mat4 uModelview;uniform vec3 uResolution;uniform vec3 uOffset;uniform vec3 uDOF;uniform vec3 uFade;
+attribute vec3 aPosition;attribute vec3 aEuler;attribute vec2 aMisc;varying vec3 pposition;varying float psize;varying float palpha;varying float pdist;
+varying vec3 normX;varying vec3 normY;varying vec3 normZ;varying vec3 normal;varying float diffuse;varying float specular;varying float rstop;varying float distancefade;
+void main(void){
+  vec4 pos=uModelview*vec4(aPosition+uOffset,1.0);
+  gl_Position=uProjection*pos;
+  gl_PointSize=aMisc.x*uProjection[1][1]/-pos.z*uResolution.y*0.5;
+  pposition=pos.xyz;psize=aMisc.x;pdist=length(pos.xyz);
+  palpha=smoothstep(0.0,1.0,(pdist-0.1)/uFade.z);
+  vec3 elrsn=sin(aEuler);vec3 elrcs=cos(aEuler);
+  mat3 rotx=mat3(1.0,0.0,0.0,0.0,elrcs.x,elrsn.x,0.0,-elrsn.x,elrcs.x);
+  mat3 roty=mat3(elrcs.y,0.0,-elrsn.y,0.0,1.0,0.0,elrsn.y,0.0,elrcs.y);
+  mat3 rotz=mat3(elrcs.z,elrsn.z,0.0,-elrsn.z,elrcs.z,0.0,0.0,0.0,1.0);
+  mat3 rotmat=rotx*roty*rotz;normal=rotmat[2];
+  mat3 trrotm=mat3(rotmat[0][0],rotmat[1][0],rotmat[2][0],rotmat[0][1],rotmat[1][1],rotmat[2][1],rotmat[0][2],rotmat[1][2],rotmat[2][2]);
+  normX=trrotm[0];normY=trrotm[1];normZ=trrotm[2];
+  const vec3 lit=vec3(0.6917144638660746,0.6917144638660746,-0.20751433915982237);
+  float tmpdfs=dot(lit,normal);if(tmpdfs<0.0){normal=-normal;tmpdfs=dot(lit,normal);}diffuse=0.4+tmpdfs;
+  vec3 eyev=normalize(-pos.xyz);
+  if(dot(eyev,normal)>0.0){vec3 hv=normalize(eyev+lit);specular=pow(max(dot(hv,normal),0.0),20.0);}else{specular=0.0;}
+  rstop=clamp((abs(pdist-uDOF.x)-uDOF.y)/uDOF.z,0.0,1.0);rstop=pow(rstop,0.5);
+  distancefade=min(1.0,exp((uFade.x-pdist)*0.69315/uFade.y));
+}
+</script>
+<script id="sakura_point_fsh" type="x-shader/x_fragment">
+#ifdef GL_ES
+precision highp float;
+#endif
+uniform vec3 uDOF;uniform vec3 uFade;const vec3 fadeCol=vec3(0.06,0.08,0.10);
+varying vec3 pposition;varying float psize;varying float palpha;varying float pdist;
+varying vec3 normX;varying vec3 normY;varying vec3 normZ;varying vec3 normal;varying float diffuse;varying float specular;varying float rstop;varying float distancefade;
+float ellipse(vec2 p, vec2 o, vec2 r){vec2 lp=(p-o)/r;return length(lp)-1.0;}
+void main(void){
+  vec3 p=vec3(gl_PointCoord-vec2(0.5,0.5),0.0)*2.0;
+  vec3 d=vec3(0.0,0.0,-1.0);float nd=normZ.z;if(abs(nd)<0.0001)discard;
+  float np=dot(normZ,p);vec3 tp=p+d*np/nd;vec2 coord=vec2(dot(normX,tp),dot(normY,tp));
+  const float s=0.258819045102521;const float c=0.965925826289068;mat2 m=mat2(c,-s,s,c);
+  vec2 q=vec2(abs(coord.x),coord.y)*m;
+  float r = (q.x<0.0) ? ellipse(q, vec2(0.065,0.024)*0.5, vec2(0.36,0.96)*0.5)
+                      : ellipse(q, vec2(0.065,0.024)*0.5, vec2(0.58,0.96)*0.5);
+  if(r>rstop)discard;
+  vec3 col=mix(vec3(0.90,0.94,1.0), vec3(0.76,0.84,0.98), r);
+  float gy=mix(0.0,1.0,pow(coord.y*0.5+0.5,0.35));
+  col*=vec3(1.0,gy,gy); col*=mix(0.85,1.0,pow(abs(coord.x),0.3));
+  col=col*diffuse+specular; col=mix(fadeCol,col,distancefade);
+  float alpha=(rstop>0.001)?(0.5-r/(rstop*2.0)):1.0; alpha=smoothstep(0.0,1.0,alpha)*palpha;
+  gl_FragColor=vec4(col*0.55,alpha);
+}
+</script>
+<script id="fx_common_vsh" type="x-shader/x_vertex">
+uniform vec3 uResolution;attribute vec2 aPosition;varying vec2 texCoord;varying vec2 screenCoord;
+void main(void){gl_Position=vec4(aPosition,0.0,1.0);texCoord=aPosition.xy*0.5+vec2(0.5,0.5);screenCoord=aPosition.xy*vec2(uResolution.z,1.0);}
+</script>
+<script id="bg_fsh" type="x-shader/x_fragment">
+#ifdef GL_ES
+precision highp float;
+#endif
+uniform vec2 uTimes;varying vec2 texCoord;varying vec2 screenCoord;
+void main(void){
+  vec3 col; float c; vec2 v=texCoord*vec2(0.8,1.0)-vec2(0.95,1.0);
+  c=exp(-pow(length(v)*1.8,2.0));
+  col=mix(vec3(0.01,0.02,0.05), vec3(0.88,0.95,1.0)*1.4, c);
+  gl_FragColor=vec4(col*0.45,1.0);
+}
+</script>
+<script id="fx_brightbuf_fsh" type="x-shader/x_fragment">
+#ifdef GL_ES
+precision highp float;
+#endif
+uniform sampler2D uSrc;uniform vec2 uDelta;varying vec2 texCoord;varying vec2 screenCoord;
+void main(void){vec4 col=texture2D(uSrc,texCoord);gl_FragColor=vec4(col.rgb*2.0-vec3(0.5),1.0);}
+</script>
+<script id="fx_dirblur_r4_fsh" type="x-shader/x_fragment">
+#ifdef GL_ES
+precision highp float;
+#endif
+uniform sampler2D uSrc;uniform vec2 uDelta;uniform vec4 uBlurDir;varying vec2 texCoord;varying vec2 screenCoord;
+void main(void){
+  vec4 col=texture2D(uSrc,texCoord);
+  col+=texture2D(uSrc, texCoord+uBlurDir.xy*uDelta);
+  col+=texture2D(uSrc, texCoord-uBlurDir.xy*uDelta);
+  col+=texture2D(uSrc, texCoord+(uBlurDir.xy+uBlurDir.zw)*uDelta);
+  col+=texture2D(uSrc, texCoord-(uBlurDir.xy+uBlurDir.zw)*uDelta);
+  gl_FragColor=col/5.0;
+}
+</script>
+<script id="fx_common_fsh" type="x-shader/x_fragment">
+#ifdef GL_ES
+precision highp float;
+#endif
+uniform sampler2D uSrc;uniform vec2 uDelta;varying vec2 texCoord;varying vec2 screenCoord;
+void main(void){gl_FragColor=texture2D(uSrc,texCoord);}
+</script>
+<script id="pp_final_vsh" type="x-shader/x_vertex">
+uniform vec3 uResolution;attribute vec2 aPosition;varying vec2 texCoord;varying vec2 screenCoord;
+void main(void){gl_Position=vec4(aPosition,0.0,1.0);texCoord=aPosition.xy*0.5+vec2(0.5,0.5);screenCoord=aPosition.xy*vec2(uResolution.z,1.0);}
+</script>
+<script id="pp_final_fsh" type="x-shader/x_fragment">
+#ifdef GL_ES
+precision highp float;
+#endif
+uniform sampler2D uSrc;uniform sampler2D uBloom;uniform vec2 uDelta;varying vec2 texCoord;varying vec2 screenCoord;
+void main(void){
+  vec4 s=texture2D(uSrc,texCoord)*2.0; vec4 b=texture2D(uBloom,texCoord);
+  vec4 col=s + b*(vec4(1.0)+s);
+  col*=smoothstep(1.0,0.0,pow(length((texCoord-vec2(0.5))*2.0),1.2)*0.5);
+  col=pow(col, vec4(0.4545454545));
+  gl_FragColor=vec4(col.rgb,1.0);
+}
+</script>
+
+<script>
+/* 以下 JS 是樱花背景的原逻辑（保持不变） */
+var Vector3={},Matrix44={};Vector3.create=function(x,y,z){return{'x':x,'y':y,'z':z}};Vector3.dot=function(v0,v1){return v0.x*v1.x+v0.y*v1.y+v0.z*v1.z};Vector3.cross=function(v,v0,v1){v.x=v0.y*v1.z-v0.z*v1.y;v.y=v0.z*v1.x-v0.x*v1.z;v.z=v0.x*v1.y-v0.y*v1.x};Vector3.normalize=function(v){var l=v.x*v.x+v.y*v.y+v.z*v.z;if(l>0.00001){l=1.0/Math.sqrt(l);v.x*=l;v.y*=l;v.z*=l}};Vector3.arrayForm=function(v){if(v.array){v.array[0]=v.x;v.array[1]=v.y;v.array[2]=v.z}else{v.array=new Float32Array([v.x,v.y,v.z])}return v.array};Matrix44.createIdentity=function(){return new Float32Array([1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0])};Matrix44.loadProjection=function(m,aspect,vdeg,near,far){var h=near*Math.tan(vdeg*Math.PI/180.0*0.5)*2.0;var w=h*aspect;m[0]=2.0*near/w;m[1]=0.0;m[2]=0.0;m[3]=0.0;m[4]=0.0;m[5]=2.0*near/h;m[6]=0.0;m[7]=0.0;m[8]=0.0;m[9]=0.0;m[10]=-(far+near)/(far-near);m[11]=-1.0;m[12]=0.0;m[13]=0.0;m[14]=-2.0*far*near/(far-near);m[15]=0.0};Matrix44.loadLookAt=function(m,vpos,vlook,vup){var f=Vector3.create(vpos.x-vlook.x,vpos.y-vlook.y,vpos.z-vlook.z);Vector3.normalize(f);var s=Vector3.create(1.0,0.0,0.0);Vector3.cross(s,vup,f);Vector3.normalize(s);var u=Vector3.create(1.0,0.0,0.0);Vector3.cross(u,f,s);Vector3.normalize(u);m[0]=s.x;m[1]=u.x;m[2]=f.x;m[3]=0.0;m[4]=s.y;m[5]=u.y;m[6]=f.y;m[7]=0.0;m[8]=s.z;m[9]=u.z;m[10]=f.z;m[11]=0.0;m[12]=-(vpos.x*m[0]+vpos.y*m[4]+vpos.z*m[8]);m[13]=-(vpos.x*m[1]+vpos.y*m[5]+vpos.z*m[9]);m[14]=-(vpos.x*m[2]+vpos.y*m[6]+vpos.z*m[10]);m[15]=1.0};
+var timeInfo={'start':0,'prev':0,'delta':0,'elapsed':0};
+var gl,renderSpec={'width':0,'height':0,'aspect':1,'array':new Float32Array(3),'halfWidth':0,'halfHeight':0,'halfArray':new Float32Array(3)};renderSpec.setSize=function(w,h){renderSpec.width=w;renderSpec.height=h;renderSpec.aspect=renderSpec.width/renderSpec.height;renderSpec.array[0]=renderSpec.width;renderSpec.array[1]=renderSpec.height;renderSpec.array[2]=renderSpec.aspect;renderSpec.halfWidth=Math.floor(w/2);renderSpec.halfHeight=Math.floor(h/2);renderSpec.halfArray[0]=renderSpec.halfWidth;renderSpec.halfArray[1]=renderSpec.halfHeight;renderSpec.halfArray[2]=renderSpec.halfWidth/renderSpec.halfHeight};
+function deleteRenderTarget(rt){gl.deleteFramebuffer(rt.frameBuffer);gl.deleteRenderbuffer(rt.renderBuffer);gl.deleteTexture(rt.texture)}
+function createRenderTarget(w,h){var r={'width':w,'height':h,'sizeArray':new Float32Array([w,h,w/h]),'dtxArray':new Float32Array([1.0/w,1.0/h])};r.frameBuffer=gl.createFramebuffer();r.renderBuffer=gl.createRenderbuffer();r.texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,r.texture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.bindFramebuffer(gl.FRAMEBUFFER,r.frameBuffer);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,r.texture,0);gl.bindRenderbuffer(gl.RENDERBUFFER,r.renderBuffer);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,r.renderBuffer);gl.bindTexture(gl.TEXTURE_2D,null);gl.bindRenderbuffer(gl.RENDERBUFFER,null);gl.bindFramebuffer(gl.FRAMEBUFFER,null);return r}
+function compileShader(t,src){var s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){var e=gl.getShaderInfoLog(s);gl.deleteShader(s);console.error(e);return null}return s}
+function createShader(vsrc,fsrc,ul,al){var v=compileShader(gl.VERTEX_SHADER,vsrc);var f=compileShader(gl.FRAGMENT_SHADER,fsrc);if(v==null||f==null){return null}var p=gl.createProgram();gl.attachShader(p,v);gl.attachShader(p,f);gl.deleteShader(v);gl.deleteShader(f);gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS)){var e=gl.getProgramInfoLog(p);console.error(e);return null}if(ul){p.uniforms={};for(var i=0;i<ul.length;i++){p.uniforms[ul[i]]=gl.getUniformLocation(p,ul[i])}}if(al){p.attributes={};for(var j=0;j<al.length;j++){var a=al[j];p.attributes[a]=gl.getAttribLocation(p,a)}}return p}
+function useShader(p){gl.useProgram(p);for(var a in p.attributes){gl.enableVertexAttribArray(p.attributes[a])}}
+function unuseShader(p){for(var a in p.attributes){gl.disableVertexAttribArray(p.attributes[a])}gl.useProgram(null)}
+var projection={'angle':60,'nearfar':new Float32Array([0.1,100.0]),'matrix':Matrix44.createIdentity()};
+var camera={'position':Vector3.create(0,0,100),'lookat':Vector3.create(0,0,0),'up':Vector3.create(0,1,0),'dof':Vector3.create(10.0,4.0,8.0),'matrix':Matrix44.createIdentity()};
+var pointFlower={},sceneStandBy=false;
+var BlossomParticle=function(){this.velocity=new Array(3);this.rotation=new Array(3);this.position=new Array(3);this.euler=new Array(3);this.size=1.0;this.alpha=1.0;this.zkey=0.0};
+BlossomParticle.prototype.setVelocity=function(x,y,z){this.velocity[0]=x;this.velocity[1]=y;this.velocity[2]=z};
+BlossomParticle.prototype.setRotation=function(x,y,z){this.rotation[0]=x;this.rotation[1]=y;this.rotation[2]=z};
+BlossomParticle.prototype.setPosition=function(x,y,z){this.position[0]=x;this.position[1]=y;this.position[2]=z};
+BlossomParticle.prototype.setEulerAngles=function(x,y,z){this.euler[0]=x;this.euler[1]=y;this.euler[2]=z};
+BlossomParticle.prototype.setSize=function(s){this.size=s};
+BlossomParticle.prototype.update=function(dt){this.position[0]+=this.velocity[0]*dt;this.position[1]+=this.velocity[1]*dt;this.position[2]+=this.velocity[2]*dt;this.euler[0]+=this.rotation[0]*dt;this.euler[1]+=this.rotation[1]*dt;this.euler[2]+=this.rotation[2]*dt};
+function createPointFlowers(){var prm=gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE);renderSpec.pointSize={'min':prm[0],'max':prm[1]};var v=document.getElementById("sakura_point_vsh").textContent;var f=document.getElementById("sakura_point_fsh").textContent;pointFlower.program=createShader(v,f,['uProjection','uModelview','uResolution','uOffset','uDOF','uFade'],['aPosition','aEuler','aMisc']);useShader(pointFlower.program);pointFlower.offset=new Float32Array([0.0,0.0,0.0]);pointFlower.fader=Vector3.create(0.0,10.0,0.0);pointFlower.numFlowers=1600;pointFlower.particles=new Array(pointFlower.numFlowers);pointFlower.dataArray=new Float32Array(pointFlower.numFlowers*(3+3+2));pointFlower.positionArrayOffset=0;pointFlower.eulerArrayOffset=pointFlower.numFlowers*3;pointFlower.miscArrayOffset=pointFlower.numFlowers*6;pointFlower.buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,pointFlower.buffer);gl.bufferData(gl.ARRAY_BUFFER,pointFlower.dataArray,gl.DYNAMIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,null);unuseShader(pointFlower.program);for(var i=0;i<pointFlower.numFlowers;i++){pointFlower.particles[i]=new BlossomParticle()}}
+function initPointFlowers(){pointFlower.area=Vector3.create(20.0,20.0,20.0);pointFlower.area.x=pointFlower.area.y*renderSpec.aspect;pointFlower.fader.x=10.0;pointFlower.fader.y=pointFlower.area.z;pointFlower.fader.z=0.1;var PI2=Math.PI*2.0;var v=Vector3.create(0,0,0);var s=0;var rnd=function(){return(Math.random()*2.0-1.0)};for(var i=0;i<pointFlower.numFlowers;i++){var p=pointFlower.particles[i];v.x=rnd()*0.3+0.8;v.y=rnd()*0.2-1.0;v.z=rnd()*0.3+0.5;Vector3.normalize(v);s=2.0+Math.random()*1.0;p.setVelocity(v.x*s,v.y*s,v.z*s);p.setRotation(rnd()*PI2*0.5,rnd()*PI2*0.5,rnd()*PI2*0.5);p.setPosition(rnd()*pointFlower.area.x,rnd()*pointFlower.area.y,rnd()*pointFlower.area.z);p.setEulerAngles(Math.random()*Math.PI*2.0,Math.random()*Math.PI*2.0,Math.random()*Math.PI*2.0);p.setSize(0.9+Math.random()*0.1)}}
+function renderPointFlowers(){var PI2=Math.PI*2.0;var limit=[pointFlower.area.x,pointFlower.area.y,pointFlower.area.z];function repeatPos(p,c,lim){if(Math.abs(p.position[c])-p.size*0.5>lim){p.position[c]>0?p.position[c]-=lim*2.0:p.position[c]+=lim*2.0}}function repeatEuler(p,c){p.euler[c]=p.euler[c]%PI2;if(p.euler[c]<0.0){p.euler[c]+=PI2}}for(var i=0;i<pointFlower.numFlowers;i++){var p=pointFlower.particles[i];p.update(timeInfo.delta,timeInfo.elapsed);repeatPos(p,0,pointFlower.area.x);repeatPos(p,1,pointFlower.area.y);repeatPos(p,2,pointFlower.area.z);repeatEuler(p,0);repeatEuler(p,1);repeatEuler(p,2);p.alpha=1.0;p.zkey=(camera.matrix[2]*p.position[0]+camera.matrix[6]*p.position[1]+camera.matrix[10]*p.position[2]+camera.matrix[14])}
+pointFlower.particles.sort(function(a,b){return a.zkey-b.zkey});var ip=pointFlower.positionArrayOffset,ie=pointFlower.eulerArrayOffset,im=pointFlower.miscArrayOffset;for(var j=0;j<pointFlower.numFlowers;j++){var p=pointFlower.particles[j];pointFlower.dataArray[ip]=p.position[0];pointFlower.dataArray[ip+1]=p.position[1];pointFlower.dataArray[ip+2]=p.position[2];ip+=3;pointFlower.dataArray[ie]=p.euler[0];pointFlower.dataArray[ie+1]=p.euler[1];pointFlower.dataArray[ie+2]=p.euler[2];ie+=3;pointFlower.dataArray[im]=p.size;pointFlower.dataArray[im+1]=p.alpha;im+=2}
+gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);var prog=pointFlower.program;useShader(prog);gl.uniformMatrix4fv(prog.uniforms.uProjection,false,projection.matrix);gl.uniformMatrix4fv(prog.uniforms.uModelview,false,camera.matrix);gl.uniform3fv(prog.uniforms.uResolution,renderSpec.array);gl.uniform3fv(prog.uniforms.uDOF,Vector3.arrayForm(camera.dof));gl.uniform3fv(prog.uniforms.uFade,Vector3.arrayForm(pointFlower.fader));gl.bindBuffer(gl.ARRAY_BUFFER,pointFlower.buffer);gl.bufferData(gl.ARRAY_BUFFER,pointFlower.dataArray,gl.DYNAMIC_DRAW);gl.vertexAttribPointer(prog.attributes.aPosition,3,gl.FLOAT,false,0,pointFlower.positionArrayOffset*Float32Array.BYTES_PER_ELEMENT);gl.vertexAttribPointer(prog.attributes.aEuler,3,gl.FLOAT,false,0,pointFlower.eulerArrayOffset*Float32Array.BYTES_PER_ELEMENT);gl.vertexAttribPointer(prog.attributes.aMisc,2,gl.FLOAT,false,0,pointFlower.miscArrayOffset*Float32Array.BYTES_PER_ELEMENT);
+for(var k=1;k<2;k++){var z=k*-2.0;pointFlower.offset[0]=pointFlower.area.x*-1.0;pointFlower.offset[1]=pointFlower.area.y*-1.0;pointFlower.offset[2]=pointFlower.area.z*z;gl.uniform3fv(prog.uniforms.uOffset,pointFlower.offset);gl.drawArrays(gl.POINT,0,pointFlower.numFlowers);
+pointFlower.offset[0]=pointFlower.area.x*-1.0;pointFlower.offset[1]=pointFlower.area.y*1.0;pointFlower.offset[2]=pointFlower.area.z*z;gl.uniform3fv(prog.uniforms.uOffset,pointFlower.offset);gl.drawArrays(gl.POINT,0,pointFlower.numFlowers);
+pointFlower.offset[0]=pointFlower.area.x*1.0;pointFlower.offset[1]=pointFlower.area.y*-1.0;pointFlower.offset[2]=pointFlower.area.z*z;gl.uniform3fv(prog.uniforms.uOffset,pointFlower.offset);gl.drawArrays(gl.POINT,0,pointFlower.numFlowers);
+pointFlower.offset[0]=pointFlower.area.x*1.0;pointFlower.offset[1]=pointFlower.area.y*1.0;pointFlower.offset[2]=pointFlower.area.z*z;gl.uniform3fv(prog.uniforms.uOffset,pointFlower.offset);gl.drawArrays(gl.POINT,0,pointFlower.numFlowers)}
+pointFlower.offset[0]=0.0;pointFlower.offset[1]=0.0;pointFlower.offset[2]=0.0;gl.uniform3fv(prog.uniforms.uOffset,pointFlower.offset);gl.drawArrays(gl.POINT,0,pointFlower.numFlowers);gl.bindBuffer(gl.ARRAY_BUFFER,null);unuseShader(prog);gl.enable(gl.DEPTH_TEST);gl.disable(gl.BLEND)}
+function createEffectProgram(v,f,eu,ea){var r={};var u=['uResolution','uSrc','uDelta'];if(eu){u=u.concat(eu)}var a=['aPosition'];if(ea){a=a.concat(ea)}r.program=createShader(v,f,u,a);useShader(r.program);r.dataArray=new Float32Array([-1.0,-1.0,1.0,-1.0,-1.0,1.0,1.0,1.0]);r.buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,r.buffer);gl.bufferData(gl.ARRAY_BUFFER,r.dataArray,gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,null);unuseShader(r.program);return r}
+function useEffect(o,src){var p=o.program;useShader(p);gl.uniform3fv(p.uniforms.uResolution,renderSpec.array);if(src!=null){gl.uniform2fv(p.uniforms.uDelta,src.dtxArray);gl.uniform1i(p.uniforms.uSrc,0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,src.texture)}}
+function drawEffect(o){gl.bindBuffer(gl.ARRAY_BUFFER,o.buffer);gl.vertexAttribPointer(o.program.attributes.aPosition,2,gl.FLOAT,false,0,0);gl.drawArrays(gl.TRIANGLE_STRIP,0,4)}
+function unuseEffect(o){unuseShader(o.program)}
+var effectLib={};function createEffectLib(){var v,f;var cmn=document.getElementById("fx_common_vsh").textContent;f=document.getElementById("bg_fsh").textContent;effectLib.sceneBg=createEffectProgram(cmn,f,['uTimes'],null);f=document.getElementById("fx_brightbuf_fsh").textContent;effectLib.mkBrightBuf=createEffectProgram(cmn,f,null,null);f=document.getElementById("fx_dirblur_r4_fsh").textContent;effectLib.dirBlur=createEffectProgram(cmn,f,['uBlurDir'],null);v=document.getElementById("pp_final_vsh").textContent;f=document.getElementById("pp_final_fsh").textContent;effectLib.finalComp=createEffectProgram(v,f,['uBloom'],null)}
+function createBackground(){}function initBackground(){}function renderBackground(){gl.disable(gl.DEPTH_TEST);useEffect(effectLib.sceneBg,null);gl.uniform2f(effectLib.sceneBg.program.uniforms.uTimes,timeInfo.elapsed,timeInfo.delta);drawEffect(effectLib.sceneBg);unuseEffect(effectLib.sceneBg);gl.enable(gl.DEPTH_TEST)}
+function createPostProcess(){}function initPostProcess(){}
+function renderPostProcess(){gl.enable(gl.TEXTURE_2D);gl.disable(gl.DEPTH_TEST);function bindRT(rt,clr){gl.bindFramebuffer(gl.FRAMEBUFFER,rt.frameBuffer);gl.viewport(0,0,rt.width,rt.height);if(clr){gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT)}}bindRT(renderSpec.wHalfRT0,true);useEffect(effectLib.mkBrightBuf,renderSpec.mainRT);drawEffect(effectLib.mkBrightBuf);unuseEffect(effectLib.mkBrightBuf);for(var i=0;i<2;i++){var p=1.5+1*i;var s=2.0+1*i;bindRT(renderSpec.wHalfRT1,true);useEffect(effectLib.dirBlur,renderSpec.wHalfRT0);gl.uniform4f(effectLib.dirBlur.program.uniforms.uBlurDir,p,0.0,s,0.0);drawEffect(effectLib.dirBlur);unuseEffect(effectLib.dirBlur);bindRT(renderSpec.wHalfRT0,true);useEffect(effectLib.dirBlur,renderSpec.wHalfRT1);gl.uniform4f(effectLib.dirBlur.program.uniforms.uBlurDir,0.0,p,0.0,s);drawEffect(effectLib.dirBlur);unuseEffect(effectLib.dirBlur)}gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,renderSpec.width,renderSpec.height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);useEffect(effectLib.finalComp,renderSpec.mainRT);gl.uniform1i(effectLib.finalComp.program.uniforms.uBloom,1);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,renderSpec.wHalfRT0.texture);drawEffect(effectLib.finalComp);unuseEffect(effectLib.finalComp);gl.enable(gl.DEPTH_TEST)}
+function createScene(){createEffectLib();createBackground();createPointFlowers();createPostProcess();sceneStandBy=true}
+function initScene(){initBackground();initPointFlowers();initPostProcess();camera.position.z=pointFlower.area.z+projection.nearfar[0];projection.angle=Math.atan2(pointFlower.area.y,camera.position.z+pointFlower.area.z)*180.0/Math.PI*2.0;Matrix44.loadProjection(projection.matrix,renderSpec.aspect,projection.angle,projection.nearfar[0],projection.nearfar[1])}
+function renderScene(){Matrix44.loadLookAt(camera.matrix,camera.position,camera.lookat,camera.up);gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,renderSpec.mainRT.frameBuffer);gl.viewport(0,0,renderSpec.mainRT.width,renderSpec.mainRT.height);gl.clearColor(0.005,0.01,0.07,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);renderBackground();renderPointFlowers();renderPostProcess()}
+function onResize(){makeCanvasFullScreen(document.getElementById("sakura"));setViewports();if(sceneStandBy){initScene()}}
+function setViewports(){renderSpec.setSize(gl.canvas.width,gl.canvas.height);gl.clearColor(0.2,0.2,0.5,1.0);gl.viewport(0,0,renderSpec.width,renderSpec.height);function rt(n,w,h){var t=renderSpec[n];if(t)deleteRenderTarget(t);renderSpec[n]=createRenderTarget(w,h)}rt('mainRT',renderSpec.width,renderSpec.height);rt('wFullRT0',renderSpec.width,renderSpec.height);rt('wFullRT1',renderSpec.width,renderSpec.height);rt('wHalfRT0',renderSpec.halfWidth,renderSpec.halfHeight);rt('wHalfRT1',renderSpec.halfWidth,renderSpec.halfHeight)}
+function render(){renderScene()}
+var animating=true;function toggleAnimation(elm){animating^=true;if(animating)animate();if(elm){elm.innerHTML=animating?"Stop":"Start"}}
+function stepAnimation(){if(!animating)animate()}
+function animate(){var cur=new Date();timeInfo.elapsed=(cur-timeInfo.start)/1000.0;timeInfo.delta=(cur-timeInfo.prev)/1000.0;timeInfo.prev=cur;if(animating)requestAnimationFrame(animate);render()}
+function makeCanvasFullScreen(canvas){var b=document.body;var d=document.documentElement;fullw=Math.max(b.clientWidth,b.scrollWidth,d.scrollWidth,d.clientWidth);fullh=Math.max(b.clientHeight,b.scrollHeight,d.scrollHeight,d.clientHeight);canvas.width=fullw;canvas.height=fullh}
+window.addEventListener('load',function(){var canvas=document.getElementById("sakura");try{makeCanvasFullScreen(canvas);gl=canvas.getContext('experimental-webgl')}catch(e){alert("WebGL not supported."+e);console.error(e);return}window.addEventListener('resize',onResize);setViewports();createScene();initScene();timeInfo.start=new Date();timeInfo.prev=timeInfo.start;animate()});
+(function(w,r){w['r'+r]=w['r'+r]||w['webkitR'+r]||w['mozR'+r]||w['msR'+r]||w['oR'+r]||function(c){w.setTimeout(c,1000/60)}})(window,'equestAnimationFrame');
+</script>
 </body>
 </html>
